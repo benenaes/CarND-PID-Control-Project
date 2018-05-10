@@ -1,46 +1,55 @@
 #ifndef PID_H
 #define PID_H
 
-class PID {
+#include <chrono>
+
+class PID 
+{
 public:
-  /*
-  * Errors
-  */
-  double p_error;
-  double i_error;
-  double d_error;
+	/*
+	* Constructor
+	*/
+	PID();
 
-  /*
-  * Coefficients
-  */ 
-  double Kp;
-  double Ki;
-  double Kd;
+	/*
+	* Destructor.
+	*/
+	virtual ~PID();
 
-  /*
-  * Constructor
-  */
-  PID();
+	/*
+	* Initialize PID.
+	*/
+	void Init(double Kp, double Ki, double Kd);
 
-  /*
-  * Destructor.
-  */
-  virtual ~PID();
+	/*
+	* Update the PID error variables given cross track error.
+	*/
+	void UpdateError(const double cte, const std::chrono::duration<double>);
 
-  /*
-  * Initialize PID.
-  */
-  void Init(double Kp, double Ki, double Kd);
+	/*
+	* Calculate the total PID error.
+	*/
+	double TotalError() const;
 
-  /*
-  * Update the PID error variables given cross track error.
-  */
-  void UpdateError(double cte);
+	double AverageError() const;
 
-  /*
-  * Calculate the total PID error.
-  */
-  double TotalError();
+private:
+	/*
+	* Coefficients
+	*/
+	double m_Kp;
+	double m_Ki;
+	double m_Kd;
+
+	/*
+	* Errors
+	*/
+	double m_p_error;
+	double m_i_error;
+	double m_d_error;
+
+	double m_TotalSquareError;
+	unsigned int m_Iterations;
 };
 
 #endif /* PID_H */

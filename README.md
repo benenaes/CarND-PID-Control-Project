@@ -37,62 +37,46 @@ There's an experimental patch for windows in this [PR](https://github.com/udacit
 
 Tips for setting up your environment can be found [here](https://classroom.udacity.com/nanodegrees/nd013/parts/40f38239-66b6-46ec-ae68-03afd8a601c8/modules/0949fca6-b379-42af-a919-ee50aa304e6a/lessons/f758c44c-5e40-4e01-93b5-1a82aa4e044f/concepts/23d376c7-0195-4276-bdf0-e02f1f3c665d)
 
-## Editor Settings
+## Reflection
 
-We've purposefully kept editor configuration files out of this repo in order to
-keep it as simple and environment agnostic as possible. However, we recommend
-using the following settings:
+### PID parameters
 
-* indent using spaces
-* set tab width to 2 spaces (keeps the matrices in source code aligned)
+The steering angle $s_a$ is determined by the cross-track error ($cte$). 
+$$
+s_a = - cte * τ_p - Δcte * τ_d - Σ cte * τ_i
+$$
 
-## Code Style
+- The proportional parameter $τ_p$ will make sure the steering angle is adapted immediately when the car is leaving the middle of the track (the absolute cross-track error or absolute $cte$ is getting larger). If $τ_p$ is small, then the steering angle will be adapted too slowly and thus will leave the track in larger turns. If $τ_p$ is large, then the car will react fast to large $cte$ values (thus resulting in larger steering values), but it will start to oscillate around the middle of the track, which can also result in the car leaving the track.
+- The differential parameter $τ_d$ works on changes (delta's) in the steering angle. If the car is moving quickly towards the outside of the track, it will make the steering angle counteract even more. If the car is moving towards the middle of the track, it will dampen the steering angle oscillations and thus make the driving experience smoother. If the parameter is too large, it will counteract the effect of $τ_p$ too much. If the parameter is too small, then the oscillations will not be dampened enough.
+- The integral parameter $τ_i$ works on the sum of all *cte* values and thus on persistent errors in the steering angle. If the parameter is too small, then persistent errors like the steering wheel bias, will not be corrected. If the parameter is too large, then the car will tend to drift towards one side of the track     
 
-Please (do your best to) stick to [Google's C++ style guide](https://google.github.io/styleguide/cppguide.html).
+### Hyperparameter search
 
-## Project Instructions and Rubric
+I used the Twiddle hyperparameter search algorithm to find good values for the $τ_p$, $τ_i$, $τ_d$ parameters. 
 
-Note: regardless of the changes you make, your project must be buildable using
-cmake and make!
+Instead of starting at (0, 0, 0), I started at (0.5, 0.005, 0.5), because:
 
-More information is only accessible by people who are already enrolled in Term 2
-of CarND. If you are enrolled, see [the project page](https://classroom.udacity.com/nanodegrees/nd013/parts/40f38239-66b6-46ec-ae68-03afd8a601c8/modules/f1820894-8322-4bb3-81aa-b26b3c6dcbaf/lessons/e8235395-22dd-4b87-88e0-d108c5e5bbf4/concepts/6a4d8d42-6a04-4aa6-b284-1697c0fd6562)
-for instructions and the project rubric.
+- (0,0,0) would mean no steering would take place
+- the initial $cte$ is 0.7598, while the car is not that far from the middle of the track and steering angle can only range from [-1, 1]: this means that $τ_p$ needs to be positive (otherwise the car would be pushed towards the outside of the track) and also not too large (otherwise the steering angle would immediately reach absolute values larger than 1).  $τ_d$ usually needs to be larger because it works on derivatives (which are quite smaller than the proportional value). Since the error derivatives are divided by time delta's (the simulator provides updates at around 40 Hz, so usually the time delta's are around 0.025 seconds), I assumed that a good initial value for $τ_d$ would be more or less the same as $τ_p$
+- having a large $τ_i$ doesn't make sense as there is likely not such a big steering wheel bias 
 
-## Hints!
+The program can run in "optimization mode", which means a hyperparameter search is performed. The PID controller is initialized with the initial $τ_p$, $τ_i$, $τ_d$ parameters from the *TwiddleOptimizer* class. Each time a certain amount of $cte$ updates $n_u$ was reached, the program resets the simulator, updates the *TwiddleOptimizer* and takes the next step in the hyperparameter search.  
 
-* You don't have to follow this directory structure, but if you do, your work
-  will span all of the .cpp files here. Keep an eye out for TODOs.
+*twiddle.cpp* takes care of the hyperparameter search. 
 
-## Call for IDE Profiles Pull Requests
+Initially, I left the throttle value at 0.3 and did a hyperparameter search by gradually increasing the amount of *cte* updates $n_u$ to update the *TwiddleOptimizer*. The gradual increase in $n_u$ has the advantage that we can find good guesses for the $τ_p$, $τ_i$, $τ_d$ parameters much faster and that they can be improved by making the part of the track they are trained on, larger (larger $n_u$).
 
-Help your fellow students!
+### Result
 
-We decided to create Makefiles with cmake to keep this project as platform
-agnostic as possible. Similarly, we omitted IDE profiles in order to we ensure
-that students don't feel pressured to use one IDE or another.
+I added a video where the steering angle of the car is automatically determined by the PID controller. The maximum speed of the car is around 70 mph and doesn't leave the track. 
 
-However! I'd love to help people get up and running with their IDEs of choice.
-If you've created a profile for an IDE that you think other students would
-appreciate, we'd love to have you add the requisite profile files and
-instructions to ide_profiles/. For example if you wanted to add a VS Code
-profile, you'd add:
+[Video here](./self_driving_car_nanodegree_program 10_05_2018 19_00_44.mp4)
 
-* /ide_profiles/vscode/.vscode
-* /ide_profiles/vscode/README.md
+I let the PID controller control the steering angle of the car for a couple of laps. The car stays on track until there is a large time delta in between track error updates (> 0.1 seconds) while it is taking one of the larger turns. I added some debugging data in the code to see when the time delta exceeds 0.08 seconds. I saw these three events (leaving track, large turn and large time delta) occur on multiple trials.
 
-The README should explain what the profile does, how to take advantage of it,
-and how to install it.
+### Improvements
 
-Frankly, I've never been involved in a project with multiple IDE profiles
-before. I believe the best way to handle this would be to keep them out of the
-repo root to avoid clutter. My expectation is that most profiles will include
-instructions to copy files to a new location to get picked up by the IDE, but
-that's just a guess.
-
-One last note here: regardless of the IDE used, every submitted project must
-still be compilable with cmake and make./
-
-## How to write a README
-A well written README file can enhance your project and portfolio.  Develop your abilities to create professional README files by completing [this free course](https://www.udacity.com/course/writing-readmes--ud777).
-
+- It would make sense to tune the $τ_i$ parameter separately on straight parts of the track. If the car would have a steering bias, then this could be covered up by the turns in the track.
+- The calculation of integral error could be limited in time (e.g. only the last *n* points) and could also take the time delta's into account.
+- Also, it would make a lot of sense to brake or at least control the speed when the track error is becoming large. A PID controller for the throttle would be a good idea. 
+- The Twiddle optimizer could refuse the sum of squared track errors and re-run on the same parameter set if the time delta in between certain *cte* updates exceeded a certain value (e.g. 0.1 seconds). There is a chance that the car left the track, because of this large time delta and not because of the current parameter set.
