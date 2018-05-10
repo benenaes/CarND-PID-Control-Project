@@ -70,7 +70,7 @@ Initially, I left the throttle value at 0.3 and did a hyperparameter search by g
 
 I added a video where the steering angle of the car is automatically determined by the PID controller. The maximum speed of the car is around 70 mph and doesn't leave the track. 
 
-[Video here](./self_driving_car_nanodegree_program 10_05_2018 19_00_44.mp4)
+[Video here](./pid_controlled_track.mp4)
 
 I let the PID controller control the steering angle of the car for a couple of laps. The car stays on track until there is a large time delta in between track error updates (> 0.1 seconds) while it is taking one of the larger turns. I added some debugging data in the code to see when the time delta exceeds 0.08 seconds. I saw these three events (leaving track, large turn and large time delta) occur on multiple trials.
 
